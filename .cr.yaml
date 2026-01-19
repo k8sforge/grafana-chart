@@ -1,9 +1,5 @@
-charts:
-  - name: grafana
-    path: charts/grafana
-
-cr:
-  owner: k8sforge
-  git-repo: grafana-chart
-  chart-repo: https://k8sforge.github.io/grafana-chart
-  pages-branch: gh-pages
+# Chart Releaser configuration
+# This config tells cr to skip release checks when using packages-with-index
+owner: k8sforge
+git-repo: grafana-chart
+packages-with-index: true
