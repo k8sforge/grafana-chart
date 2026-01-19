@@ -1,0 +1,9 @@
+charts:
+  - name: grafana
+    path: charts/grafana
+
+cr:
+  owner: k8sforge
+  git-repo: grafana-chart
+  chart-repo: https://k8sforge.github.io/grafana-chart
+  pages-branch: gh-pages

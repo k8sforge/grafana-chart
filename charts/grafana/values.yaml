@@ -1,0 +1,166 @@
+# Default values for grafana chart wrapper
+# This chart wraps the official grafana/grafana chart with sensible defaults
+
+# High Availability Configuration
+# Note: replicaCount is passed to grafana.replicaCount
+replicaCount: 1
+
+podDisruptionBudget:
+  # Enable PDB when using multiple replicas for HA
+  enabled: false
+  # minAvailable will be calculated as replicaCount - 1 if not specified
+  minAvailable: 1
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - grafana
+          topologyKey: kubernetes.io/hostname
+
+# Resource Management
+resources:
+  server:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Health Checks
+healthCheck:
+  enabled: true
+  path: "/api/health"
+  protocol: "HTTP"
+  port: "traffic-port"
+
+# Ingress (disabled by default - Terraform handles ALB)
+ingress:
+  enabled: false
+
+# Monitoring
+monitoring:
+  serviceMonitor:
+    enabled: false
+    interval: "30s"
+    labels: {}
+
+# OIDC/OAuth Configuration (generic, values-driven)
+oidc:
+  enabled: false
+  name: ""           # Provider name (e.g., "Cognito", "Okta")
+  issuer: ""         # OIDC issuer URL
+  clientId: ""       # OAuth client ID
+  clientSecret: ""  # OAuth client secret (reference to secret)
+  scopes:
+    - "openid"
+    - "profile"
+    - "email"
+  roleAttributePath: ""   # Optional: JWT claim path for roles (e.g., "groups")
+  groupAttributePath: ""  # Optional: JWT claim path for groups
+  logoutUrl: ""          # Optional: Logout URL for provider
+
+# Database Configuration (passed through to official chart)
+# Note: Database provisioning is handled by Terraform/RDS
+database:
+  type: "sqlite"  # sqlite, postgres, mysql
+  host: ""
+  name: "grafana"
+  user: "grafana"
+  # password via secret
+
+# Pass through to official Grafana chart
+# All values under 'grafana' are passed directly to the official chart
+grafana:
+  enabled: true
+
+  # Replica count (should match top-level replicaCount for HA)
+  replicaCount: 1
+
+  # PodDisruptionBudget (managed by wrapper template)
+  # Set podDisruptionBudget.enabled at top level
+
+  # Affinity rules (can override top-level affinity)
+  # affinity: {}
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 80
+
+  # Ingress (disabled - Terraform handles ALB)
+  ingress:
+    enabled: false
+
+  # Persistence
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+
+  # Admin user
+  adminUser: admin
+  adminPassword: admin
+
+  # Resources (will be overridden by wrapper defaults)
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Liveness and readiness probes
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Grafana configuration (grafana.ini)
+  # OIDC/OAuth configuration: When oidc.enabled is true, merge the OIDC config here
+  # Example structure (see EXAMPLES.md for full OIDC setup):
+  # grafana.ini:
+  #   auth:
+  #     generic_oauth:
+  #       enabled: true
+  #       name: "Cognito"
+  #       client_id: "..."
+  #       ...
+  grafana.ini:
+    server:
+      root_url: ""
+    paths:
+      data: /var/lib/grafana
+      logs: /var/log/grafana
+      plugins: /var/lib/grafana/plugins
+      provisioning: /etc/grafana/provisioning
+    analytics:
+      reporting_enabled: false
+    log:
+      mode: console
+    log.console:
+      level: info
